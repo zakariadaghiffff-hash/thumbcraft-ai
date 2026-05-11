@@ -137,8 +137,12 @@ export default function DashboardPage() {
   };
 
   const handleDelete = async (id: string) => {
+    if (!user) return;
     try {
-      await fetch(`/api/thumbnails?id=${id}`, { method: "DELETE" });
+      await fetch(`/api/thumbnails?id=${id}`, {
+        method: "DELETE",
+        headers: { "x-user-id": user.uid },
+      });
       setHistoryThumbnails((prev) => prev.filter((t) => t.id !== id));
       setGeneratedThumbnails((prev) => prev.filter((t) => t.id !== id));
     } catch (error) {

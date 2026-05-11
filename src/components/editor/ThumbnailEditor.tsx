@@ -62,54 +62,58 @@ export default function ThumbnailEditor({ imageUrl }: ThumbnailEditorProps) {
     return () => window.removeEventListener("resize", updateScale);
   }, []);
 
-  const renderCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+  const renderCanvas = useCallback((): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      const canvas = canvasRef.current;
+      if (!canvas) { resolve(); return; }
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(); return; }
 
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      ctx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturation}%)`;
-      ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-      ctx.filter = "none";
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.filter = `brightness(${state.brightness}%) contrast(${state.contrast}%) saturate(${state.saturation}%)`;
+        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        ctx.filter = "none";
 
-      if (state.glowEnabled) {
-        ctx.shadowColor = state.glowColor;
-        ctx.shadowBlur = state.glowIntensity;
-        ctx.strokeStyle = state.glowColor;
-        ctx.lineWidth = 2;
-        ctx.strokeRect(
-          state.glowIntensity,
-          state.glowIntensity,
-          CANVAS_WIDTH - state.glowIntensity * 2,
-          CANVAS_HEIGHT - state.glowIntensity * 2
-        );
-        ctx.shadowBlur = 0;
-      }
-
-      state.texts.forEach((text) => {
-        ctx.save();
-        ctx.translate(text.x, text.y);
-        ctx.rotate((text.rotation * Math.PI) / 180);
-
-        if (text.shadowEnabled) {
-          ctx.shadowColor = text.shadowColor;
-          ctx.shadowBlur = 8;
-          ctx.shadowOffsetX = 3;
-          ctx.shadowOffsetY = 3;
+        if (state.glowEnabled) {
+          ctx.shadowColor = state.glowColor;
+          ctx.shadowBlur = state.glowIntensity;
+          ctx.strokeStyle = state.glowColor;
+          ctx.lineWidth = 2;
+          ctx.strokeRect(
+            state.glowIntensity,
+            state.glowIntensity,
+            CANVAS_WIDTH - state.glowIntensity * 2,
+            CANVAS_HEIGHT - state.glowIntensity * 2
+          );
+          ctx.shadowBlur = 0;
         }
 
-        ctx.font = `${text.fontWeight} ${text.fontSize}px ${text.fontFamily}`;
-        ctx.fillStyle = text.color;
-        ctx.textBaseline = "top";
-        ctx.fillText(text.text, 0, 0);
-        ctx.restore();
-      });
-    };
-    img.src = state.imageUrl;
+        state.texts.forEach((text) => {
+          ctx.save();
+          ctx.translate(text.x, text.y);
+          ctx.rotate((text.rotation * Math.PI) / 180);
+
+          if (text.shadowEnabled) {
+            ctx.shadowColor = text.shadowColor;
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 3;
+            ctx.shadowOffsetY = 3;
+          }
+
+          ctx.font = `${text.fontWeight} ${text.fontSize}px ${text.fontFamily}`;
+          ctx.fillStyle = text.color;
+          ctx.textBaseline = "top";
+          ctx.fillText(text.text, 0, 0);
+          ctx.restore();
+        });
+        resolve();
+      };
+      img.onerror = () => reject(new Error("Failed to load image"));
+      img.src = state.imageUrl;
+    });
   }, [state]);
 
   useEffect(() => {
@@ -202,19 +206,17 @@ export default function ThumbnailEditor({ imageUrl }: ThumbnailEditorProps) {
     }));
   };
 
-  const exportCanvas = () => {
+  const exportCanvas = async () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    renderCanvas();
-    setTimeout(() => {
-      const dataUrl = canvas.toDataURL("image/png", 1.0);
-      const a = document.createElement("a");
-      a.href = dataUrl;
-      a.download = "thumbnail-1280x720.png";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }, 100);
+    await renderCanvas();
+    const dataUrl = canvas.toDataURL("image/png", 1.0);
+    const a = document.createElement("a");
+    a.href = dataUrl;
+    a.download = "thumbnail-1280x720.png";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   };
 
   return (

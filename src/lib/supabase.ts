@@ -45,8 +45,12 @@ export async function getUserThumbnails(userId: string) {
   return data as ThumbnailRecord[];
 }
 
-export async function deleteThumbnail(id: string) {
-  const { error } = await supabase.from("thumbnails").delete().eq("id", id);
+export async function deleteThumbnail(id: string, userId: string) {
+  const { error } = await supabase
+    .from("thumbnails")
+    .delete()
+    .eq("id", id)
+    .eq("user_id", userId);
   if (error) throw error;
 }
 

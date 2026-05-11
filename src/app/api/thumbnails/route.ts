@@ -48,6 +48,11 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const userId = request.headers.get("x-user-id");
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get("id");
 
@@ -58,7 +63,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await deleteThumbnail(id);
+    await deleteThumbnail(id, userId);
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Delete thumbnail error:", error);
